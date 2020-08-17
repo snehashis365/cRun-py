@@ -149,7 +149,10 @@ def test(stdscr, file_list):
         for file in file_list:
             if index == sel_index:
                 stdscr.attron(curses.color_pair(1))
-            stdscr.addstr(index, 0, f"{index + 1}. {file}")
+            try:
+                stdscr.addstr(index, 0, f"{index + 1}. {file}")
+            except curses.error as e:
+                pass
             if index == sel_index:
                 stdscr.attroff(curses.color_pair(1))
             index += 1
@@ -193,7 +196,6 @@ def main():
             print(BUILD_MENU)
         elif opt in ["-t", "--time"]:
             TEST_MODE = True
-            print(SHOW_TIME)
         elif opt in ["-v", "--version"]:
             print(f"cRun {VERSION}(test-release) by snehashis365")
             sys.exit()
