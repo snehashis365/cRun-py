@@ -15,6 +15,7 @@ SINGLE_FILE = False
 CLEANUP = False
 SHOW_TIME = False
 TEST_MODE = False
+TEST_RETURN = 0
 
 # Color codes
 LGREEN = "\033[1;32m"
@@ -138,23 +139,32 @@ def build_menu(file_list):
 
 
 def test(stdscr, file_list):
-    # stdscr = curses.initscr()
+    stdscr = curses.initscr()
+    global TEST_RETURN
     curses.curs_set(0)
     curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_GREEN)
+    pair = 1
     sel_index = 0
     h, w = stdscr.getmaxyx()
     while True:
         index = 0
         stdscr.clear()
         for file in file_list:
+            is_compiled = os.path.exists(CACHE_FOLDER + file[:-2] + ".out")
             if index == sel_index:
-                stdscr.attron(curses.color_pair(1))
+                if is_compiled:
+                    pair = 3
+                else:
+                    pair = 1
+                stdscr.attron(curses.color_pair(pair))
             try:
                 stdscr.addstr(index, 0, f"{index + 1}. {file}")
             except curses.error as e:
                 pass
             if index == sel_index:
-                stdscr.attroff(curses.color_pair(1))
+                stdscr.attroff(curses.color_pair(pair))
             index += 1
         stdscr.refresh()
         key = stdscr.getch()
@@ -170,6 +180,7 @@ def test(stdscr, file_list):
                 sel_index +=1
             else:
                 sel_index = 0
+    TEST_RETURN = sel_index
 
 
 def main():
@@ -217,7 +228,7 @@ def main():
     banner()
     count = 0
     err_count = 0
-    if len(args) == 1:
+    if BUILD_MENU and len(args) == 1:
         SINGLE_FILE = True
         build_submenu(args[0])
     elif BUILD_MENU and len(args) > 1:
@@ -232,7 +243,9 @@ def main():
             build_submenu(c_files[0])
         elif len(c_files) > 1:
             if TEST_MODE:
-                curses.wrapper(test, c_files)
+                while True:
+                    curses.wrapper(test, c_files)
+                    build_submenu(c_files[TEST_RETURN])
             else:
                 build_menu(c_files)
         else:
@@ -247,6 +260,7 @@ def main():
                     err_count += 1
             count += 1
         print(f"Total: {count}\nFailed: {err_count}\nSuccess: {count - err_count}")
+    print(curses.COLOR_WHITE)
 
 
 if __name__ == "__main__":
