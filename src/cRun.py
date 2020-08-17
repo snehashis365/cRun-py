@@ -2,9 +2,10 @@
 import sys
 import os
 import getopt
+import curses
 
 # Some variables declared are for future use
-VERSION = "0.0.2"  # This is redundant will be removed soon
+VERSION = "0.0.3"  # This is redundant will be removed soon
 OS = os.name
 CACHE_FOLDER = ".crun-cache/"
 COMPILE = False
@@ -13,6 +14,7 @@ BUILD_MENU = False
 SINGLE_FILE = False
 CLEANUP = False
 SHOW_TIME = False
+TEST_MODE = False
 
 # Color codes
 LGREEN = "\033[1;32m"
@@ -135,12 +137,44 @@ def build_menu(file_list):
             print(f"{RED}Wrong input!!{NORMAL}\nPlease Enter desired option {LGREEN}number{NORMAL}\n")
 
 
+def test(stdscr, file_list):
+    # stdscr = curses.initscr()
+    curses.curs_set(0)
+    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    sel_index = 0
+    h, w = stdscr.getmaxyx()
+    while True:
+        index = 0
+        stdscr.clear()
+        for file in file_list:
+            if index == sel_index:
+                stdscr.attron(curses.color_pair(1))
+            stdscr.addstr(index, 0, f"{index + 1}. {file}")
+            if index == sel_index:
+                stdscr.attroff(curses.color_pair(1))
+            index += 1
+        stdscr.refresh()
+        key = stdscr.getch()
+        if key == curses.KEY_ENTER or key in [10, 13]:
+            break
+        elif key == curses.KEY_UP:
+            if sel_index > 0:
+                sel_index -= 1
+            else:
+                sel_index = len(file_list)-1
+        elif key == curses.KEY_DOWN:
+            if sel_index < len(file_list)-1:
+                sel_index +=1
+            else:
+                sel_index = 0
+
+
 def main():
-    global EXECUTE, COMPILE, BUILD_MENU, SHOW_TIME, CLEANUP, SINGLE_FILE
+    global EXECUTE, COMPILE, BUILD_MENU, SHOW_TIME, CLEANUP, SINGLE_FILE, TEST_MODE
     # Handle options
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hcrmtvdsiu",
-                                   ["help", "compile", "run", "menu", "time", "version", "cleanup", "super", "install",
+                                   ["help", "compile", "run", "menu", "test", "version", "cleanup", "super", "install",
                                     "update"])
     except getopt.GetoptError as err:
         print(err)
@@ -158,7 +192,7 @@ def main():
             BUILD_MENU = True
             print(BUILD_MENU)
         elif opt in ["-t", "--time"]:
-            SHOW_TIME = True
+            TEST_MODE = True
             print(SHOW_TIME)
         elif opt in ["-v", "--version"]:
             print(f"cRun {VERSION}(test-release) by snehashis365")
@@ -195,7 +229,10 @@ def main():
         if len(c_files) == 1:
             build_submenu(c_files[0])
         elif len(c_files) > 1:
-            build_menu(c_files)
+            if TEST_MODE:
+                curses.wrapper(test, c_files)
+            else:
+                build_menu(c_files)
         else:
             print("No .c files in current directory")
     else:
