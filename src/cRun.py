@@ -16,13 +16,15 @@ CLEANUP = False
 SHOW_TIME = False
 TEST_MODE = False
 TEST_RETURN = 0
-
+TEST_KEYS = []
+MAX_FILE_NAME = 0
 # Color codes
 LGREEN = "\033[1;32m"
 RED = "\033[0;31m"
 BLUE = "\033[0;34m"
 LBLUE = "\033[0;36m"
 NORMAL = "\033[0m"
+BANNER_ART = "\n                 ____                __  __\n          _____ / __ \\ __  __ ____   \\ \\ \\ \\\n         / ___// /_/ // / / // __ \\   \\ \\ \\ \\\n        / /__ / _, _// /_/ // / / /   / / / /\n        \\___//_/ |_| \\__,_//_/ /_/   /_/ /_/\n\n                          - by snehashis365"
 
 
 def clear():  # Executes command depending on OS
@@ -34,15 +36,8 @@ def clear():  # Executes command depending on OS
 
 def banner():  # Builds banner
     print(LBLUE, end="")
-    print(r"""
-                 ____                __  __
-          _____ / __ \ __  __ ____   \ \ \ \
-         / ___// /_/ // / / // __ \   \ \ \ \
-        / /__ / _, _// /_/ // / / /   / / / /
-        \___//_/ |_| \__,_//_/ /_/   /_/ /_/
-
-    """)
-    print(f"{LGREEN}                          - by snehashis365{NORMAL}")
+    print(BANNER_ART)
+    # print(f"{LGREEN}                          - by snehashis365{NORMAL}")
     print(f"Version : {LGREEN}{VERSION}(test-release){NORMAL}")
     print("Re-Compile : ", end="")
     if COMPILE:
@@ -138,53 +133,96 @@ def build_menu(file_list):
             print(f"{RED}Wrong input!!{NORMAL}\nPlease Enter desired option {LGREEN}number{NORMAL}\n")
 
 
-def test(stdscr, file_list):
-    stdscr = curses.initscr()
-    global TEST_RETURN
+def test_banner(stdscr):  # This will replace the banner function once finished
+    stdscr.clear()
+    try:
+        stdscr.attron(curses.color_pair(3))
+        y = 0
+        for line in BANNER_ART.splitlines():
+            stdscr.addstr(y, 0, line)
+            y += 1
+        stdscr.refresh()
+        stdscr.attroff(curses.color_pair(3))
+
+    except curses.error as e:
+        pass
+
+
+def test(stdscr, file_list):  # This will replace the build menu function once finished
+    # stdscr = curses.initscr()
+    global TEST_RETURN, TEST_KEYS, MAX_FILE_NAME
     curses.curs_set(0)
-    curses.init_pair(1, curses.COLOR_BLACK, curses.COLOR_WHITE)
-    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_GREEN)
-    pair = 1
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_WHITE)
+    curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_GREEN)
     sel_index = 0
     h, w = stdscr.getmaxyx()
     while True:
+        test_banner(stdscr)
         index = 0
-        stdscr.clear()
+        y, x = 10, 0
         for file in file_list:
-            is_compiled = os.path.exists(CACHE_FOLDER + file[:-2] + ".out")
-            if index == sel_index:
-                if is_compiled:
-                    pair = 3
+            pair = 1
+            if os.path.exists(CACHE_FOLDER + file[:-2] + ".out"):
+                if index == sel_index:
+                    pair = 4
                 else:
-                    pair = 1
-                stdscr.attron(curses.color_pair(pair))
+                    pair = 3
+            elif index == sel_index:
+                pair = 2
+            stdscr.attron(curses.color_pair(pair))
             try:
-                stdscr.addstr(index, 0, f"{index + 1}. {file}")
+                if y == h-6:
+                    y = 10
+                    x += MAX_FILE_NAME+3  # Reset X and Y
+                stdscr.addstr(y, x, f"> {file}")
             except curses.error as e:
                 pass
-            if index == sel_index:
-                stdscr.attroff(curses.color_pair(pair))
             index += 1
+            y += 1
+            stdscr.attroff(curses.color_pair(pair))
+        try:
+            if sel_index == len(file_list):
+                stdscr.attron(curses.color_pair(2))
+                stdscr.addstr(h-4, 0, "> Exit")
+                stdscr.attroff(curses.color_pair(2))
+            else:
+                stdscr.addstr(h-4, 0, "> Exit")
+        except curses.error as e:
+            pass
         stdscr.refresh()
         key = stdscr.getch()
+        TEST_KEYS.append(key)
         if key == curses.KEY_ENTER or key in [10, 13]:
             break
         elif key == curses.KEY_UP:
             if sel_index > 0:
                 sel_index -= 1
             else:
-                sel_index = len(file_list)-1
+                sel_index = len(file_list)
         elif key == curses.KEY_DOWN:
-            if sel_index < len(file_list)-1:
-                sel_index +=1
+            if sel_index < len(file_list):
+                sel_index += 1
             else:
                 sel_index = 0
+        elif key == 27:
+            stdscr.clear()
+            try:
+                stdscr.addstr(0, 0, "Do You really want to exit?")
+                stdscr.refresh()
+            except curses.error as e:
+                pass
+            key = stdscr.getch()
+            if key == 27:
+                sys.exit()
+            else:
+                pass
     TEST_RETURN = sel_index
 
 
 def main():
-    global EXECUTE, COMPILE, BUILD_MENU, SHOW_TIME, CLEANUP, SINGLE_FILE, TEST_MODE
+    global EXECUTE, COMPILE, BUILD_MENU, CLEANUP, SINGLE_FILE, TEST_MODE, TEST_RETURN, TEST_KEYS, MAX_FILE_NAME
     # Handle options
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hcrmtvdsiu",
@@ -225,9 +263,6 @@ def main():
     # Checking cache folder
     if not os.path.exists(CACHE_FOLDER[:-1]):
         os.mkdir(CACHE_FOLDER[:-1])
-    banner()
-    count = 0
-    err_count = 0
     if BUILD_MENU and len(args) == 1:
         SINGLE_FILE = True
         build_submenu(args[0])
@@ -238,6 +273,8 @@ def main():
         for content in directory_content:
             if content[-2:] == ".c":
                 c_files.append(content)
+                if len(content) > MAX_FILE_NAME:
+                    MAX_FILE_NAME = len(content)
         directory_content.clear()
         if len(c_files) == 1:
             build_submenu(c_files[0])
@@ -245,12 +282,20 @@ def main():
             if TEST_MODE:
                 while True:
                     curses.wrapper(test, c_files)
-                    build_submenu(c_files[TEST_RETURN])
+                    if TEST_RETURN < len(c_files):
+                        build_submenu(c_files[TEST_RETURN])
+                    else:
+                        print(TEST_KEYS)
+                        print("Exiting...")
+                        break
             else:
                 build_menu(c_files)
         else:
             print("No .c files in current directory")
     else:
+        banner()
+        count = 0
+        err_count = 0
         for arg in args:
             if EXECUTE:
                 run(arg)
@@ -260,7 +305,6 @@ def main():
                     err_count += 1
             count += 1
         print(f"Total: {count}\nFailed: {err_count}\nSuccess: {count - err_count}")
-    print(curses.COLOR_WHITE)
 
 
 if __name__ == "__main__":
