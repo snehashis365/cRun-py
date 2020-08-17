@@ -3,6 +3,7 @@ import sys
 import os
 import getopt
 import curses
+import time
 
 # Some variables declared are for future use
 VERSION = "0.0.3"  # This is redundant will be removed soon
@@ -24,7 +25,7 @@ RED = "\033[0;31m"
 BLUE = "\033[0;34m"
 LBLUE = "\033[0;36m"
 NORMAL = "\033[0m"
-BANNER_ART = "\n                 ____                __  __\n          _____ / __ \\ __  __ ____   \\ \\ \\ \\\n         / ___// /_/ // / / // __ \\   \\ \\ \\ \\\n        / /__ / _, _// /_/ // / / /   / / / /\n        \\___//_/ |_| \\__,_//_/ /_/   /_/ /_/\n\n                          - by snehashis365"
+BANNER_ART = "                 ____                __  __\n          _____ / __ \\ __  __ ____   \\ \\ \\ \\\n         / ___// /_/ // / / // __ \\   \\ \\ \\ \\\n        / /__ / _, _// /_/ // / / /   / / / /\n        \\___//_/ |_| \\__,_//_/ /_/   /_/ /_/\n\n                          - by snehashis365"
 
 
 def clear():  # Executes command depending on OS
@@ -157,9 +158,11 @@ def test(stdscr, file_list):  # This will replace the build menu function once f
     curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
     curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_GREEN)
     sel_index = 0
-    h, w = stdscr.getmaxyx()
+
     while True:
+        h, w = stdscr.getmaxyx()
         test_banner(stdscr)
+        stdscr.addstr(h-1, 0, f"h={h},w={w},sel={sel_index}")
         index = 0
         y, x = 10, 0
         for file in file_list:
@@ -173,10 +176,10 @@ def test(stdscr, file_list):  # This will replace the build menu function once f
                 pair = 2
             stdscr.attron(curses.color_pair(pair))
             try:
-                if y == h-6:
+                if y == h-3:
                     y = 10
                     x += MAX_FILE_NAME+3  # Reset X and Y
-                stdscr.addstr(y, x, f"> {file}")
+                stdscr.addstr(y, x, f"> {file[:-2]}")
             except curses.error as e:
                 pass
             index += 1
@@ -185,13 +188,13 @@ def test(stdscr, file_list):  # This will replace the build menu function once f
         try:
             if sel_index == len(file_list):
                 stdscr.attron(curses.color_pair(2))
-                stdscr.addstr(h-4, 0, "> Exit")
+                stdscr.addstr(h-2, (w//2) - 2, "Exit")
                 stdscr.attroff(curses.color_pair(2))
             else:
-                stdscr.addstr(h-4, 0, "> Exit")
+                stdscr.addstr(h-2, (w//2) - 2, "Exit")
         except curses.error as e:
             pass
-        stdscr.refresh()
+        # stdscr.refresh()
         key = stdscr.getch()
         TEST_KEYS.append(key)
         if key == curses.KEY_ENTER or key in [10, 13]:
@@ -206,18 +209,20 @@ def test(stdscr, file_list):  # This will replace the build menu function once f
                 sel_index += 1
             else:
                 sel_index = 0
+        elif key == curses.KEY_RIGHT and sel_index+(h-10)-3 <= len(file_list):
+            sel_index += (h - 10) - 3
+        elif key == curses.KEY_LEFT and sel_index-((h-10)-3) >= 0:
+            sel_index -= (h - 10) - 3
         elif key == 27:
-            stdscr.clear()
             try:
-                stdscr.addstr(0, 0, "Do You really want to exit?")
+                stdscr.attron(curses.color_pair(2))
+                stdscr.addstr(h - 2, (w // 2) - 5, "Exiting...")
+                stdscr.attroff(curses.color_pair(2))
                 stdscr.refresh()
             except curses.error as e:
                 pass
-            key = stdscr.getch()
-            if key == 27:
-                sys.exit()
-            else:
-                pass
+            time.sleep(1)
+            sys.exit()
     TEST_RETURN = sel_index
 
 
