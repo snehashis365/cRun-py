@@ -5,19 +5,19 @@ with open("README.md", "r") as fh:
 
 setup(
     name="crun-py",
-    version="0.0.3",
+    version="0.0.4",
     author="Snehashis Sarkar",
     author_email="snehashis.2000@gmail.com",
     description="C Programming Simplified",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/snehashis365/cRun",
+    url="https://get-crun.github.io/",
     project_urls={
         "GitHub repository": "https://github.com/snehashis365/cRun-py",
     },
     packages=["src"],
     install_requires=[
-          'windows-curses',
+          'windows-curses;platform_system == "Window"'
       ],
     include_package_data=True,
     entry_points={

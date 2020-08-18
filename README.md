@@ -4,7 +4,7 @@
 
 ## What is cRun?
 
-cRun is a bash script that is meant to make compiling and running **.c** files easy for both beginners and experienced. It's designed mainly based on the use case of **students** new to C Programming
+cRun is a script that is meant to make compiling and running **.c** files easy for both beginners and experienced. It's designed mainly based on the use case of **students** new to C Programming
 
 _Note: Previews here are from the original version the python version previews will be updated soon_
 
@@ -43,13 +43,15 @@ Doesn't matter if you are a beginner on **Windows 10** or learning **Linux** wit
   <img src="https://i.ibb.co/JCwzJsP/Termux-Run.jpg" width="300" style="padding: 6px" />
 </p>
 
-_Note: The script itself will run on any platform with a bash environment but install will be supported on a select few_
+_Note: This version of the script will run on any platform with a python3 interpreter and gcc/clang/MinGw compiler installed_
 
 ##### Platforms supported for install
 - Windows 10 (WSL)
+- Windows (MinGW Needed)
 - Linux
   - Debian Systems
   - Coming Soon
+- Mac (Not Tested but shoul work)
 - Android (Termux Only)
 
 ### No need to copy in every folder
