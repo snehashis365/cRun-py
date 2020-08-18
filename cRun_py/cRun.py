@@ -6,8 +6,13 @@ import curses
 import time
 
 # Some variables declared are for future use
-VERSION = "0.0.3"  # This is redundant will be removed soon
+VERSION = "0.0.4.2"  # This is redundant will be removed soon
 OS = os.name
+EXTENSION = ""
+if OS == "posix":
+    EXTENSION = ".out"
+else:
+    EXTENSION = ".exe"
 CACHE_FOLDER = ".crun-cache/"
 COMPILE = False
 EXECUTE = True
@@ -24,7 +29,6 @@ RED = "\033[0;31m"
 BLUE = "\033[0;34m"
 LBLUE = "\033[0;36m"
 NORMAL = "\033[0m"
-# BANNER_ART = "                 ____                __  __\n          _____ / __ \\ __  __ ____   \\ \\ \\ \\\n         / ___// /_/ // / / // __ \\   \\ \\ \\ \\\n        / /__ / _, _// /_/ // / / /   / / / /\n        \\___//_/ |_| \\__,_//_/ /_/   /_/ /_/\n\n                          - by snehashis365"
 BANNER_ART = r"""
                  ____                __  __
           _____ / __ \ __  __ ____   \ \ \ \
@@ -71,27 +75,33 @@ def banner():  # Builds banner
 
 def compile_c(file_name):
     print(BLUE, end="")  # Setting color prior
-    if os.path.exists(CACHE_FOLDER + file_name[:-2] + ".out"):
+    if os.path.exists(CACHE_FOLDER + file_name[:-2] + EXTENSION):
         print("Re-", end="")
     print(f"Compiling{NORMAL}->{file_name}\n")
-    return os.system("cc " + file_name + " -o " + CACHE_FOLDER + file_name[:-2] + ".out -lm")
+    return os.system("cc " + file_name + " -o " + CACHE_FOLDER + file_name[:-2] + EXTENSION + " -lm")
 
 
-def run(file_name):
+def run(file_name, *argv):  # Note: Send a list instead of a tuple for *argv
     return_code = 0
-    if not os.path.exists(CACHE_FOLDER + file_name[:-2] + ".out") or COMPILE:
+    # Building string for command line arguments
+    file_args = ""
+    if any(argv):
+        for arg in argv[0]:
+            file_args += f"{arg} "
+    if not os.path.exists(CACHE_FOLDER + file_name[:-2] + EXTENSION) or COMPILE:
         return_code = compile_c(file_name)
     if return_code == 0:
-        print(f"{LGREEN}Executing{NORMAL}->{file_name}\n")
-        os.system("./" + CACHE_FOLDER + file_name[:-2] + ".out")
+        print(f"{LGREEN}Executing{NORMAL}->{file_name} {file_args}\n")
+        os.system("./" + CACHE_FOLDER + file_name[:-2] + EXTENSION + " " + file_args)
         print(f"\n{LGREEN}Done{NORMAL}\n")
     else:
         print("Compile error!")
     if CLEANUP:
-        os.system(f"rm {CACHE_FOLDER}{file_name[:-2]}.out")
+        print(f"{RED}Cleaning object file{NORMAL}->{file_name[:-2]}{EXTENSION}\n")
+        os.system(f"rm {CACHE_FOLDER}{file_name[:-2]}{EXTENSION}")
 
 
-def build_submenu(file_name):
+def build_submenu(file_name, *argv):
     while True:
         clear()
         banner()
@@ -103,7 +113,7 @@ def build_submenu(file_name):
         try:
             choice = int(input(">> "))
             if choice == 1:
-                run(file_name)
+                run(file_name, argv)
             elif choice == 2:
                 compile_c(file_name)
             elif choice == 9 and not SINGLE_FILE:
@@ -127,7 +137,7 @@ def build_menu(file_list):
         # Generate menu from file list
         for file in file_list:
             print(f"{index}. ", end="")
-            if os.path.exists(CACHE_FOLDER + file[:-2] + ".out"):
+            if os.path.exists(CACHE_FOLDER + file[:-2] + EXTENSION):
                 print(LGREEN, end="")
             else:
                 print(RED, end="")
@@ -197,7 +207,7 @@ def test(stdscr, file_list):  # This will replace the build menu function once f
         y, x = 12, 0
         for file in file_list:
             pair = 1
-            if os.path.exists(CACHE_FOLDER + file[:-2] + ".out"):
+            if os.path.exists(CACHE_FOLDER + file[:-2] + EXTENSION):
                 pair = 3
             stdscr.attron(curses.color_pair(pair))
             try:
@@ -271,7 +281,7 @@ def main():
         elif opt in ["-m", "--menu"]:
             BUILD_MENU = True
             print(BUILD_MENU)
-        elif opt in ["-t", "--time"]:
+        elif opt in ["-t", "--test"]:
             TEST_MODE = True
         elif opt in ["-v", "--version"]:
             print(f"cRun {VERSION}(test-release) by snehashis365")
@@ -322,16 +332,26 @@ def main():
     else:
         banner()
         count = 0
+        arg_count = 0
         err_count = 0
-        for arg in args:
+        temp_args = []
+        while count < len(args):
+            arg = args[count]
+            if args[count][-2:] == ".c":
+                count += 1
+                while count < len(args) and args[count][-2:] != ".c":
+                    temp_args.append(args[count])
+                    count += 1
+                count -= 1
             if EXECUTE:
-                run(arg)
+                run(arg, temp_args)
+                temp_args.clear()
             else:
                 return_code = compile_c(arg)
                 if return_code > 0:
                     err_count += 1
             count += 1
-        print(f"Total: {count}\nFailed: {err_count}\nSuccess: {count - err_count}")
+        print(f"Total: {count-arg_count}\nFailed: {err_count}\nSuccess: {(count-arg_count) - err_count}")
 
 
 if __name__ == "__main__":
