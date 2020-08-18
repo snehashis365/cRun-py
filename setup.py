@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="crun-py",
-    version="0.0.4",
+    version="0.0.4.2",
     author="Snehashis Sarkar",
     author_email="snehashis.2000@gmail.com",
     description="C Programming Simplified",
@@ -15,14 +15,14 @@ setup(
     project_urls={
         "GitHub repository": "https://github.com/snehashis365/cRun-py",
     },
-    packages=["src"],
+    packages=["cRun_py"],
     install_requires=[
-          'windows-curses;platform_system == "Window"'
+          "windows-curses >= 2.0;platform_system=='Windows'"
       ],
     include_package_data=True,
     entry_points={
         "console_scripts": [
-            "cRun-py=src.cRun:main",
+            "cRun-py=cRun_py.cRun:main",
         ]
     },
     classifiers=[
