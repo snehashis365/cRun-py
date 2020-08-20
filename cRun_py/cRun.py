@@ -1,26 +1,37 @@
 #!/usr/bin/python3
 import sys
 import os
+import subprocess
 import getopt
 import curses
 import time
+import traceback
+from tqdm import tqdm
 
 # Some variables declared are for future use
-VERSION = "0.0.4.2"  # This is redundant will be removed soon
+VERSION = "0.0.5"  # This is redundant will be removed soon
 OS = os.name
 EXTENSION = ""
+RUN = ""
 if OS == "posix":
     EXTENSION = ".out"
+    RUN = "./"
 else:
     EXTENSION = ".exe"
+    RUN = "start /b /WAIT "
 CACHE_FOLDER = ".crun-cache/"
 COMPILE = False
 EXECUTE = True
 BUILD_MENU = False
 SINGLE_FILE = False
 CLEANUP = False
+VERBOSE = False
 SHOW_TIME = False
 TEST_MODE = False
+BUFFER_START = "\033[?1049h\033[H"
+BUFFER_END = "\033[?1049l"
+BUFFER_MODE = False
+IN_BUFFER = False
 TEST_RETURN = 0
 MAX_FILE_NAME = 0
 # Color codes
@@ -52,8 +63,17 @@ def get_help():
     Execute them in the order entered.\n""")
     print(f"Usage: {sys.argv[0]} [-h help] [-c compile] [-r execute] [-m menu ] [-t test] [-d cleanup] *filename.c")
     print("The above command will consider only the files specified\n")
-    print(f"Usage: {sys.argv[0]} [-c compile] [-t test] [-d cleanup]")
+    print(f"Usage: {sys.argv[0]} [-c compile] [-t test] [-b buffer] [-d cleanup]")
     print("The above command will consider all .c files in the working directory")
+
+
+def end_script(code=0, *argv):
+    if IN_BUFFER:
+        print(BUFFER_END)
+    if any(argv):
+        print(argv[0])
+    print("Exiting...")
+    sys.exit(code)
 
 
 def banner():  # Builds banner
@@ -73,60 +93,86 @@ def banner():  # Builds banner
     print("\n")
 
 
-def compile_c(file_name):
-    print(BLUE, end="")  # Setting color prior
-    if os.path.exists(CACHE_FOLDER + file_name[:-2] + EXTENSION):
-        print("Re-", end="")
-    print(f"Compiling{NORMAL}->{file_name}\n")
-    return os.system("cc " + file_name + " -o " + CACHE_FOLDER + file_name[:-2] + EXTENSION + " -lm")
+def compile_c(file_name, print_status=True):
+    if print_status:
+        print(BLUE, end="")  # Setting color prior
+        if os.path.exists(CACHE_FOLDER + file_name[:-2] + EXTENSION):
+            print("Re-", end="")
+        print(f"Compiling{NORMAL}->{file_name}\n")
+    process = subprocess.run("gcc " + file_name + " -o " + CACHE_FOLDER + file_name[:-2] + EXTENSION + " -lm", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if print_status:
+        if process.returncode > 0:
+            print(f"{RED}Errors:{NORMAL}")
+            print(process.stderr.decode())
+        else:
+            print(f"{LGREEN}Done{NORMAL}")
+        input("Press enter to continue...")
+    return process.returncode, process.stdout.decode(), process.stderr.decode()
 
 
-def run(file_name, *argv):  # Note: Send a list instead of a tuple for *argv
+def run(file_name, wait=True,  *argv):  # Note: Send a list instead of a tuple for *argv
     return_code = 0
     # Building string for command line arguments
     file_args = ""
-    if any(argv):
+    if any(argv) and isinstance(argv[0], list):
         for arg in argv[0]:
             file_args += f"{arg} "
+    elif any(argv) and isinstance(argv[0], str):
+        file_args = argv[0]
     if not os.path.exists(CACHE_FOLDER + file_name[:-2] + EXTENSION) or COMPILE:
-        return_code = compile_c(file_name)
+        process = compile_c(file_name)
+        return_code = process[0]
+    if IN_BUFFER:
+        print(BUFFER_END)
     if return_code == 0:
         print(f"{LGREEN}Executing{NORMAL}->{file_name} {file_args}\n")
-        os.system("./" + CACHE_FOLDER + file_name[:-2] + EXTENSION + " " + file_args)
-        print(f"\n{LGREEN}Done{NORMAL}\n")
-    else:
-        print("Compile error!")
+        code = os.system(RUN + CACHE_FOLDER + file_name[:-2] + EXTENSION + " " + file_args)
+        if code == 0:
+            print(f"\n{LGREEN}Done{NORMAL}\n")
+        else:
+            print(f"\nPossible Runtime {RED}Error{NORMAL} Code={code} (Ignore if main is void)\n")
+        if wait:
+            input("Press Enter to continue...")
     if CLEANUP:
         print(f"{RED}Cleaning object file{NORMAL}->{file_name[:-2]}{EXTENSION}\n")
         os.system(f"rm {CACHE_FOLDER}{file_name[:-2]}{EXTENSION}")
+    if IN_BUFFER:
+        print(BUFFER_START)
 
 
-def build_submenu(file_name, *argv):
+def build_submenu(file_name, print_banner=True):
     while True:
-        clear()
-        banner()
+        if print_banner:
+            clear()
+            banner()
         print(f"{LBLUE}Selected->{LGREEN}{file_name}{NORMAL}\n")
-        print("1. Run\n2. Compile\n")
+        print("1. Run\n2. Run with arguments\n3. Compile\n")
         if not SINGLE_FILE:
             print("9. Return to main menu")
         print("0. Exit")
         try:
             choice = int(input(">> "))
             if choice == 1:
-                run(file_name, argv)
+                run(file_name)
             elif choice == 2:
+                tmp_args = str(input("Enter Arguments(Separated by space and quote if string)\n>> "))
+                run(file_name, True, tmp_args)
+                pass
+            elif choice == 3:
                 compile_c(file_name)
             elif choice == 9 and not SINGLE_FILE:
                 break
             elif choice == 0:
                 print("\nExiting...\n")
-                sys.exit()
+                end_script()
             else:
                 print("Wrong choice!!!")
         except Exception as e:
             print(e)
+            # Uncomment to ease debugging
+            # traceback.print_exc()
             print(f"{RED}Wrong input!!{NORMAL}\nPlease Enter desired option {LGREEN}number{NORMAL}\n")
-        input("Screen will be cleared\nPress enter to continue...")
+        # input("Press enter to continue...")
 
 
 def build_menu(file_list):
@@ -141,14 +187,17 @@ def build_menu(file_list):
                 print(LGREEN, end="")
             else:
                 print(RED, end="")
-            print(f"{file}{NORMAL}")
+            if index % 2 == 0 and len(file_list) > 5:
+                print(f"{file}{NORMAL}")
+            else:
+                print(f"{file}{NORMAL}", " " * (MAX_FILE_NAME - len(file) + 2), end="")
             index += 1
         print("\n0. Exit\n")
         try:
             choice = int(input(">> "))
             if choice == 0:
                 print("\nExiting...\n")
-                sys.exit()
+                end_script()
             elif 0 < choice <= index:
                 build_submenu(file_list[choice - 1])
                 print("Returned...")
@@ -255,16 +304,16 @@ def test(stdscr, file_list):  # This will replace the build menu function once f
             except curses.error:
                 pass
             time.sleep(1)
-            sys.exit()
+            end_script()
     TEST_RETURN = sel_index
 
 
 def main():
-    global EXECUTE, COMPILE, BUILD_MENU, CLEANUP, SINGLE_FILE, TEST_MODE, TEST_RETURN, MAX_FILE_NAME
+    global EXECUTE, COMPILE, BUILD_MENU, CLEANUP, SINGLE_FILE, VERBOSE, BUFFER_MODE, IN_BUFFER, TEST_MODE, TEST_RETURN, MAX_FILE_NAME
     # Handle options
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hcrmtvdsiu",
-                                   ["help", "compile", "run", "menu", "test", "version", "cleanup", "super", "install",
+        opts, args = getopt.getopt(sys.argv[1:], "hcrmtvdbsiu",
+                                   ["help", "compile", "run", "menu", "test", "version", "verbose", "cleanup", "buffer", "super", "install",
                                     "update"])
     except getopt.GetoptError as err:
         print(err)
@@ -280,24 +329,34 @@ def main():
             EXECUTE = True
         elif opt in ["-m", "--menu"]:
             BUILD_MENU = True
-            print(BUILD_MENU)
+            BUFFER_MODE = True
         elif opt in ["-t", "--test"]:
             TEST_MODE = True
         elif opt in ["-v", "--version"]:
             print(f"cRun {VERSION}(test-release) by snehashis365")
             sys.exit()
+        elif opt in ["--verbose"]:
+            VERBOSE = True
         elif opt in ["-d", "--cleanup"]:
             CLEANUP = True
+        elif opt in ["-b", "--buffer"] and len(args) == 0:
+            BUFFER_MODE = True
         elif opt in ["-s", "--super"]:
             print("Attempting sudo")
             os.system(f"sudo {sys.argv[0]}")
             sys.exit()
         elif opt in ["-i", "--install"]:
             print("Call Install function(Coming Soon)")
+            sys.exit()
         elif opt in ["-u", "--update"]:
             print("Call update function(Coming Soon)")
+            sys.exit()
     # End of options handling
 
+    # Alternate Buffer Start
+    if BUFFER_MODE or len(args) == 0:
+        print(BUFFER_START)
+        IN_BUFFER = True
     # Checking cache folder
     if not os.path.exists(CACHE_FOLDER[:-1]):
         os.mkdir(CACHE_FOLDER[:-1])
@@ -311,17 +370,16 @@ def main():
         for content in directory_content:
             if content[-2:] == ".c":
                 c_files.append(content)
-                if len(content) > MAX_FILE_NAME:
-                    MAX_FILE_NAME = len(content)
         directory_content.clear()
         if len(c_files) == 1:
             build_submenu(c_files[0])
         elif len(c_files) > 1:
+            MAX_FILE_NAME = len(max(c_files, key=len))
             if TEST_MODE:
                 while True:
                     curses.wrapper(test, c_files)
                     if TEST_RETURN < len(c_files):
-                        build_submenu(c_files[TEST_RETURN])
+                        build_submenu(c_files[TEST_RETURN], False)
                     else:
                         print("Exiting...")
                         break
@@ -335,6 +393,12 @@ def main():
         arg_count = 0
         err_count = 0
         temp_args = []
+        pbar = None
+        if not EXECUTE:
+            pbar = tqdm(total=len(args), dynamic_ncols=True)
+            pbar.set_description("Processing")
+            pbar.bar_format = '{l_bar}{bar}| {n_fmt}/{total_fmt}  '
+            MAX_FILE_NAME = len(max(args, key=len))
         while count < len(args):
             arg = args[count]
             if args[count][-2:] == ".c":
@@ -344,14 +408,24 @@ def main():
                     count += 1
                 count -= 1
             if EXECUTE:
-                run(arg, temp_args)
+                print(temp_args)
+                run(arg, False, temp_args)
                 temp_args.clear()
             else:
-                return_code = compile_c(arg)
-                if return_code > 0:
+                process = compile_c(arg, False)
+                if process[0] > 0:
+                    pbar.write(f"{RED}Failed{NORMAL}->{arg}", end="\n")
+                    if VERBOSE:
+                        pbar.write(process[2])
                     err_count += 1
             count += 1
-        print(f"Total: {count-arg_count}\nFailed: {err_count}\nSuccess: {(count-arg_count) - err_count}")
+            if not EXECUTE:
+                pbar.update(1)
+        # print()
+        if not EXECUTE:
+            pbar.set_description("Completed")
+            pbar.close()
+        end_script(0, f"Total: {count-arg_count}\nFailed: {err_count}\nSuccess: {(count-arg_count) - err_count}")
 
 
 if __name__ == "__main__":
