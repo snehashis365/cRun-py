@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="crun-py",
-    version="0.0.4.2",
+    version="0.0.5",
     author="Snehashis Sarkar",
     author_email="snehashis.2000@gmail.com",
     description="C Programming Simplified",
@@ -17,7 +17,7 @@ setup(
     },
     packages=["cRun_py"],
     install_requires=[
-          "windows-curses >= 2.0;platform_system=='Windows'"
+          "windows-curses >= 2.0;platform_system=='Windows'", "tqdm"
       ],
     include_package_data=True,
     entry_points={
