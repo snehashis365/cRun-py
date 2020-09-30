@@ -28,7 +28,12 @@ Run a single file or multiple files one after another or maybe just get a menu w
 <p>&nbsp;</p>
 <p align="center">
   <img src="https://i.ibb.co/KzLqwF6/Multi-Compile.gif" alt="Compile Many"/>
-  Compile Multiple files at once
+  Compile Multiple files at once (Old shell version)
+</p>
+<p>&nbsp;</p>
+<p align="center">
+  <img src ="https://i.ibb.co/NYF5mzF/Multi-Compile-py.gif" alt="Compile Many with progressbar"/>
+  Compile Multiple files at once with progress bar (From new Python version)
 </p>
 <p>&nbsp;</p>
 **There are many other options and tricks check the help message to learn more.**
