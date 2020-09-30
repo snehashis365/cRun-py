@@ -53,7 +53,7 @@ all you need I don't discriminate your choice of platform.
 <p align ="center">Example on Android (from Termux)</p>
 <p float="left" align ="center">
   <img src="https://i.ibb.co/WnKXX9n/Termux-Install.jpg" width="300" style="padding: 6px" />
-  <img src="https://i.ibb.co/JsDtHxy/Termux.jpg" width="300" style="padding: 6px" /> 
+  <img src="https://i.ibb.co/JsDtHxy/Termux.jpg" width="300" style="padding: 6px" />
   <img src="https://i.ibb.co/JCwzJsP/Termux-Run.jpg" width="300" style="padding: 6px" />
 </p>
 
